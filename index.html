@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>POC Smart Alert</title>
+		<base href="/" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="robots" content="noindex, nofollow" />
+
+		<script src="https://appsforoffice.microsoft.com/lib/1/hosted/Office.js"></script>
+		<script nonce="">
+            console.log('register onMessageComposeHandler');
+            Office.actions.associate('onMessageComposeHandler', event => {
+                console.log('trigger onMessageComposeHandler');
+            });
+
+            console.log('register onMessageAttachmentsChangedHandler');
+            Office.actions.associate('onMessageAttachmentsChangedHandler', event => {
+                console.log('trigger onMessageAttachmentsChangedHandler');
+            });
+
+            console.log('register onMessageRecipientsChangedHandler');
+            Office.actions.associate('onMessageRecipientsChangedHandler', event => {
+                console.log('trigger onMessageRecipientsChangedHandler');
+            });
+
+			console.log('register onMessageSendHandler');
+			Office.actions.associate('onMessageSendHandler', event => {
+				console.log('trigger onMessageSendHandler');
+
+				Office.context.mailbox.item.body.getAsync('text', { asyncContext: event }, getBodyCallback);
+
+				function getBodyCallback(asyncResult) {
+					const event = asyncResult.asyncContext;
+					let body = '';
+					if (
+						asyncResult.status !== Office.AsyncResultStatus.Failed &&
+						asyncResult.value !== undefined
+					) {
+						body = asyncResult.value;
+					} else {
+						const message = 'Failed to get body text';
+						console.error(message);
+						event.completed({ allowEvent: false, errorMessage: message });
+						return;
+					}
+					const POC_warning = ['warning'];
+					const matches_warning = hasMatches(body, POC_warning);
+
+                    if (matches_warning) {
+                        event.completed({
+                            allowEvent: false,
+                            errorMessage: "Secure send recommended",
+                            errorMessageMarkdown: "Secure send recommended",
+                            cancelLabel: 'Resolve',
+                            commandId: 'msgComposeOpenPaneButton',
+                        });
+                    } else {
+						event.completed({ allowEvent: true });
+					}
+				}
+
+				function hasMatches(body, terms) {
+					if (body == null || body === '') {
+						return false;
+					}
+
+					for (let index = 0; index < terms.length; index++) {
+						const term = terms[index].trim();
+						const regex = RegExp(term, 'i');
+						if (regex.test(body)) {
+							return true;
+						}
+					}
+
+					return false;
+				}
+			});
+		</script>
+	</head>
+	<body>
+		<div> Task Pane </div>
+	</body>
+</html>
